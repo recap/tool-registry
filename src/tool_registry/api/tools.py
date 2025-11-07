@@ -36,6 +36,36 @@ async def get_all_tools():
     """
     return await get_tools()
 
+@router.get("/", description="Search for tools given query parameters.")
+async def search_tools(toolURI: Optional[str] = None, typeURI: Optional[str] = None) -> list[Any]:
+    """
+    Search for tools based on provided query parameters.
+
+    Args:
+        toolURI (Optional[str]): The tool URI to search for.
+        typeURI (Optional[str]): The type URI to search for.
+
+    Returns:
+        list[dict]: A list of ToolSummary dicts matching the search criteria.
+    """
+    matches: list[Any] = []
+
+    if toolURI:
+        result = await find_tool(match_type="toolURI", match_value=toolURI)
+        if result:
+            matches.append(result)
+
+    if typeURI:
+        result = await find_tool(match_type="typeURI", match_value=typeURI)
+        if result:
+            matches.append(result)
+
+    if not matches:
+        raise HTTPException(status_code=404, detail="No matching tools found")
+
+    return matches
+
+
 # Returns a single tool matching `identifier
 # Supports:
 #  - `edc:fil.<...>` -> match by file type (`typeURI`)
@@ -73,35 +103,6 @@ async def get_tools_by_identifier(identifier: str):
     else:
         raise HTTPException(status_code=400, detail="Invalid identifier format")
 
-
-@router.get("/search", Description="Search for tools given query parameters.")
-async def search_tools(toolURI: Optional[str] = None, typeURI: Optional[str] = None) -> list[Any]:
-    """
-    Search for tools based on provided query parameters.
-
-    Args:
-        toolURI (Optional[str]): The tool URI to search for.
-        typeURI (Optional[str]): The type URI to search for.
-
-    Returns:
-        list[dict]: A list of ToolSummary dicts matching the search criteria.
-    """
-    matches: list[Any] = []
-
-    if toolURI:
-        result = await find_tool(match_type="toolURI", match_value=toolURI)
-        if result:
-            matches.append(result)
-
-    if typeURI:
-        result = await find_tool(match_type="typeURI", match_value=typeURI)
-        if result:
-            matches.append(result)
-
-    if not matches:
-        raise HTTPException(status_code=404, detail="No matching tools found")
-
-    return matches
 
 
 async def get_tools() -> list[Any]:
