@@ -1,10 +1,18 @@
-from typing import Any, Optional, Iterator
-from fastapi import APIRouter, Request, HTTPException
-from pathlib import Path
 import json
+import uuid
+import time
+
+from typing import Any, Optional, Iterator
+from fastapi import APIRouter, BackgroundTasks, Request, HTTPException
+from pathlib import Path
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 router = APIRouter()
+
+# In-memory job store for background tasks (if needed in future extensions)
+# replace for production with a persistent store as needed
+JOB_STORE: Dict[str, Dict] = {}
 
 
 # Small helper dataclass to produce the standardized tool summary dict
@@ -103,7 +111,36 @@ async def get_tools_by_identifier(identifier: str):
     else:
         raise HTTPException(status_code=400, detail="Invalid identifier format")
 
+@router.post("/search", description="Search for tools given a JSON body with 'toolURI' and/or 'typeURI'.")
+async def search_tools_post(payload: dict, bg: BackgroundTasks):
+    job_id = str(uuid.uuid4())
+    JOB_STORE[job_id] = {
+        "status": "pending",
+        "result": None
+    }
+    # print("Received search payload:", payload)
+    bg.add_task(_process_search_job, job_id, payload)
+    return {"job_id": job_id, "status": "pending"}
 
+def _process_search_job(job_id: str, criteria: dict):
+    results = []
+    for key in criteria:
+        if key not in {"toolURI", "typeURI"}:
+            raise ValueError(f"Unsupported search criteria: {key}")
+        for identifier in criteria[key]:
+            tool = find_tool_sync(match_type=key, match_value=identifier)
+            if tool:
+                results.append(tool)
+
+    JOB_STORE[job_id]["status"] = "completed"
+    JOB_STORE[job_id]["result"] = results
+
+@router.get("/search/jobs/{job_id}", description="Check the status of a search job.")
+async def get_job_status(job_id: str) -> dict:
+    job = JOB_STORE.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
 
 async def get_tools() -> list[Any]:
     tools = []
@@ -119,6 +156,9 @@ async def get_tools() -> list[Any]:
 
 
 async def find_tool(match_type: str, match_value: str) -> dict:
+    return find_tool_sync(match_type, match_value)
+
+def find_tool_sync(match_type: str, match_value: str) -> dict:
     """
     Generic finder for tools.
 
@@ -170,7 +210,7 @@ def _get_supported_tools_base() -> Path:
     # lazy import to avoid circular import with `src.main`
     from src.main import app_settings
     base = Path(app_settings.SUPPORTED_TOOLS_DIR)
-    print("SUPPORTED_TOOLS_DIR", base)
+    # print("SUPPORTED_TOOLS_DIR", base)
     return base
 
 
