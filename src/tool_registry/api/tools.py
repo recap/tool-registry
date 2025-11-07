@@ -1,5 +1,5 @@
 from typing import Any, Optional, Iterator
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from pathlib import Path
 import json
 from dataclasses import dataclass
@@ -26,13 +26,23 @@ class ToolSummary:
 
 # Returns a list of all supported tools (each item contains `toolURI`, `toolLabel`, `toolDescription`).
 @router.get("/", description="List all supported tools. Each item contains 'toolURI', 'toolLabel', and 'toolDescription'.")
+async def get_all_tools():
+    """
+    Handle GET requests to retrieve a list of all supported tools.
+
+    Returns:
+        list[dict]: A list of dictionaries, each containing the 'toolURI', 'toolLabel',
+        and 'toolDescription' of a supported tool.
+    """
+    return await get_tools()
 
 # Returns a single tool matching `identifier
 # Supports:
 #  - `edc:fil.<...>` -> match by file type (`typeURI`)
 #  - `edc:tool.<...>` -> match by tool URI (`toolURI`)
 @router.get("/{identifier}", description="Retrieve a single tool matching the provided filter. Supports 'edc:fil.*' (typeURI) and 'edc:tool.*' (toolURI).")
-async def get_tools_by_identifier(request: Request, identifier: Optional[str] = None):
+# async def get_tools_by_identifier(request: Request, identifier: Optional[str] = None):
+async def get_tools_by_identifier(identifier: str):
     """
     Handle GET requests to retrieve tools or identifier them based on a specific URI.
 
@@ -50,14 +60,48 @@ async def get_tools_by_identifier(request: Request, identifier: Optional[str] = 
         list[dict] or dict: A list of all tools if no identifier is provided, or a single
         tool matching the identifier criteria. Returns an empty dictionary if no match is found.
     """
-    if not identifier:
-        return await get_tools()
-    if identifier.startswith("edc:fil."):
-        return await find_tool(match_type="typeURI", match_value=identifier)
+    # if not identifier:
+    #     return await get_tools()
+    # if identifier.startswith("edc:fil."):
+    #     return await find_tool(match_type="typeURI", match_value=identifier)
 
     if identifier.startswith("edc:tool."):
-        return await find_tool(match_type="toolURI", match_value=identifier)
-    return {}
+        results = await find_tool(match_type="toolURI", match_value=identifier)
+        if not results:
+            raise HTTPException(status_code=404, detail="Tool not found")
+        return results
+    else:
+        raise HTTPException(status_code=400, detail="Invalid identifier format")
+
+
+@router.get("/search", Description="Search for tools given query parameters.")
+async def search_tools(toolURI: Optional[str] = None, typeURI: Optional[str] = None) -> list[Any]:
+    """
+    Search for tools based on provided query parameters.
+
+    Args:
+        toolURI (Optional[str]): The tool URI to search for.
+        typeURI (Optional[str]): The type URI to search for.
+
+    Returns:
+        list[dict]: A list of ToolSummary dicts matching the search criteria.
+    """
+    matches: list[Any] = []
+
+    if toolURI:
+        result = await find_tool(match_type="toolURI", match_value=toolURI)
+        if result:
+            matches.append(result)
+
+    if typeURI:
+        result = await find_tool(match_type="typeURI", match_value=typeURI)
+        if result:
+            matches.append(result)
+
+    if not matches:
+        raise HTTPException(status_code=404, detail="No matching tools found")
+
+    return matches
 
 
 async def get_tools() -> list[Any]:
