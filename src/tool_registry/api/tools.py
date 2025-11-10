@@ -4,12 +4,11 @@ import time
 import asyncio
 
 from typing import Any, Optional, Iterator
-from fastapi import FastAPI, APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pathlib import Path
 from typing import Dict
 from dataclasses import dataclass
 
-app = FastAPI()
 router = APIRouter()
 
 # In-memory job store for background tasks (if needed in future extensions)
