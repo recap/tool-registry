@@ -74,8 +74,8 @@ app.include_router(tools.router, tags=["Tools"], prefix=f"{API_PREFIX}/tools")
 
 @app.exception_handler(StarletteHTTPException)
 async def custom_404_handler(request: Request, exc: StarletteHTTPException):
-    if exc.status_code == 404:
-        return JSONResponse(status_code=404, content={"message": "Endpoint not found"})
+    # if exc.status_code == 404:
+        # return JSONResponse(status_code=404, content={"message": "Endpoint not found"})
     return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
 
 
