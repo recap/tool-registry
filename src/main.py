@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from src.tool_registry.api import root, tools
+from src.tool_registry.api import root, tools, jobs
 
 from akmi_utils.commons import build_date
 from akmi_utils import commons as a_commons
@@ -71,6 +71,7 @@ app = FastAPI(
 
 app.include_router(root.router, tags=["Public"], prefix=API_PREFIX)
 app.include_router(tools.router, tags=["Tools"], prefix=f"{API_PREFIX}/tools")
+app.include_router(jobs.router, tags=["Jobs"], prefix=f"{API_PREFIX}/jobs")
 
 @app.exception_handler(StarletteHTTPException)
 async def custom_404_handler(request: Request, exc: StarletteHTTPException):
