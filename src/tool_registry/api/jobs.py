@@ -15,8 +15,9 @@ async def clean_db():
     now = time.time()
     to_delete = []
     for job_id, job in JOB_STORE.items():
-        if now - job["timestamp"] > 3600:  # 1 hour expiration
-            to_delete.append(job_id)
+        if job["status"] == "completed" and "completed_timestamp" in job:
+            if now - job["completed_timestamp"] > 3600:  # 1 hour expiration
+                to_delete.append(job_id)
     for job_id in to_delete:
         del JOB_STORE[job_id]
 

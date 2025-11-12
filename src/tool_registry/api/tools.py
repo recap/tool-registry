@@ -106,7 +106,7 @@ async def search_tools_post(payload: dict, bg: BackgroundTasks):
     JOB_STORE[job_id] = {
         "status": "pending",
         "result": None,
-        "timestamp": time.time()
+        "queued_timestamp": time.time()
     }
     # print("Received search payload:", payload)
     bg.add_task(_process_search_job, job_id, payload)
@@ -123,6 +123,7 @@ def _process_search_job(job_id: str, criteria: dict):
                 results.append(tool)
 
     JOB_STORE[job_id]["status"] = "completed"
+    JOB_STORE[job_id]["completed_timestamp"] = time.time()
     JOB_STORE[job_id]["result"] = results
 
 # @router.get("/search/jobs/{job_id}", description="Check the status of a search job.")
